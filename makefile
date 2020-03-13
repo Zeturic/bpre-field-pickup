@@ -6,23 +6,20 @@ endif
 
 include $(DEVKITARM)/base_tools
 include config.mk
+include project.mk
 
 # ------------------------------------------------------------------------------
 
-SRC_FILES = $(wildcard src/*.c)
-SRC_OBJ_FILES = $(SRC_FILES:src/%.c=build/src/%.o)
+SRC_FILES ?= $(wildcard src/*.c)
+OBJ_FILES ?= $(SRC_FILES:src/%.c=build/src/%.o)
+MAIN_ASM_INCLUDES ?= $(wildcard *.s)
 
-DATA_FILES = $(wildcard data/*.s)
-DATA_OBJ_FILES = $(DATA_FILES:data/%.s=build/data/%.o)
+HEADER_DIRS ?= -I include -I gflib
 
-OBJ_FILES = $(SRC_OBJ_FILES) $(DATA_OBJ_FILES)
-
-MAIN_ASM_INCLUDES = $(wildcard *.s)
-
-CFLAGS = -O2 -mlong-calls -Wall -Wextra -mthumb -mno-thumb-interwork -fno-inline -fno-builtin -std=gnu11 -mabi=apcs-gnu -mcpu=arm7tdmi -march=armv4t -mtune=arm7tdmi -c -I include
+CFLAGS = -O2 -mlong-calls -Wall -Wextra -mthumb -mno-thumb-interwork -fno-inline -fno-builtin -std=gnu11 -mabi=apcs-gnu -mcpu=arm7tdmi -march=armv4t -mtune=arm7tdmi -x c -c $(HEADER_DIRS) $(EXTRA_CFLAGS)
 
 LD = $(PREFIX)ld
-LDFLAGS = --relocatable -T rom.ld
+LDFLAGS = --relocatable -T rom.ld $(EXTRA_LDFLAGS)
 
 SIZE = $(PREFIX)size
 SIZEFLAGS = -d -B
@@ -31,17 +28,15 @@ PREPROC = tools/preproc/preproc
 SCANINC = tools/scaninc/scaninc
 
 ARMIPS ?= armips
-ARMIPS_FLAGS = -sym test.sym
+ARMIPS_FLAGS = -sym test.sym $(EXTRA_ARMIPS_FLAGS)
 
 PYTHON ?= python
 FREESIA = $(PYTHON) tools/freesia
 FREESIAFLAGS = --rom rom.gba --start-at $(START_AT)
 
-START_AT ?= 0x0871A240
-
 # ------------------------------------------------------------------------------
 
-.PHONY: all spotless clean clean-tools repoint-cursor-options md5
+.PHONY: all spotless clean clean-tools md5
 
 all: test.gba
 
@@ -53,9 +48,6 @@ clean:
 clean-tools:
 	+BUILD_TOOLS_TARGET=clean ./build_tools.sh
 
-repoint-cursor-options:
-	$(ARMIPS) repoint-cursor-options.asm
-
 md5: test.gba
 	@md5sum test.gba
 
@@ -63,11 +55,7 @@ md5: test.gba
 
 build/src/%.o: src/%.c charmap.txt
 	@mkdir -p build/src
-	(echo '#line 1 "$<"' && $(PREPROC) "$<" charmap.txt) | $(CC) $(CFLAGS) -x c -o "$@" -
-
-build/data/%.o: data/%.s charmap.txt
-	@mkdir -p build/data
-	(echo '#line 1 "$<"' && $(PREPROC) "$<" charmap.txt) | $(CC) $(CFLAGS) -x assembler -o "$@" -
+	(echo '#line 1 "$<"' && $(PREPROC) "$<" charmap.txt) | $(CC) $(CFLAGS) -o "$@" -
 
 build/linked.o: $(OBJ_FILES) rom.ld
 	@mkdir -p build
@@ -79,11 +67,6 @@ test.gba: rom.gba main.asm build/linked.o $(MAIN_ASM_INCLUDES)
 
 build/dep/src/%.d: src/%.c
 	@mkdir -p build/dep/src
-	@$(SCANINC) -I include $< | awk '{print "$(<:src/%.c=build/src/%.o) $@ : "$$0}' > "$@"
-
-build/dep/data/%.d: data/%.s
-	@mkdir -p build/dep/data
-	@$(SCANINC) -I "" $< | awk '{print "$(<:data/%.s=build/data/%.o) $@ : "$$0}' > "$@"
+	@$(SCANINC) $(HEADER_DIRS) $< | awk '{print "$(<:src/%.c=build/src/%.o) $@ : "$$0}' > "$@"
 
 include $(SRC_FILES:src/%.c=build/dep/src/%.d)
-include $(DATA_FILES:data/%.s=build/dep/data/%.d)
