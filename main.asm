@@ -5,9 +5,7 @@
 
 .org allocation
 .area allocation_size
-    .word 0xFEFEFEFE
     .importobj "build/linked.o"
-    .word 0xFEFEFEFE
 .endarea
 
 .org 0x0802CE48
