@@ -10,7 +10,7 @@
 
 .org 0x0802CE48
 .area 0xF0, 0xFE
-    ldr r3, =atkE5_pickup |1
+    ldr r3, =Cmd_pickup |1
     bx r3
     .pool
 .endarea

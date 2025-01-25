@@ -6,7 +6,7 @@
 #include "constants/abilities.h"
 #include "constants/items.h"
 
-void atkE5_pickup(void)
+void Cmd_pickup(void)
 {
     for (u32 i = 0; i < PARTY_SIZE; ++i)
     {
